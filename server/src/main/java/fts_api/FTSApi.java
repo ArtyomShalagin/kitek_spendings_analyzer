@@ -2,41 +2,21 @@ package fts_api;
 
 import util.IOUtil;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 
 public class FTSApi {
-    private static final String password;
     private static final Map<String, String> headers;
 
-    private static final String URL_TEMPLATE = "http://proverkacheka.nalog.ru:8888/v1/inns/*/kkts/*/fss/8710000101053109/tickets/16308?fiscalSign=%s&sendToEmail=no";
-    private static final String PROPERTIES_FILE_NAME = "fts.properties";
+    private static final String PASSWORD_KEY = "password";
+    private static final String URL_TEMPLATE_KEY = "url_template";
 
     static {
-        String passwordValue = "";
-
-        try {
-            Properties properties = new Properties();
-            properties.load(new FileInputStream(PROPERTIES_FILE_NAME));
-            if (!properties.containsKey("password")) {
-                System.err.println("No fts password in " + PROPERTIES_FILE_NAME);
-            } else {
-                passwordValue = properties.getProperty("password");
-            }
-        } catch (IOException e) {
-            System.err.println("Unable to find properties file " + PROPERTIES_FILE_NAME);
-        }
-
-        password = passwordValue;
-
         headers = new HashMap<String, String>() {{
             put("User-Agent", "okhttp/3.0.1");
-            put("Authorization", "Basic " + password);
             put("Device-Id", "748036d688ec41c5");
             put("Device-OS", "Adnroid 7.1.1");
             put("Version", "2");
@@ -47,7 +27,8 @@ public class FTSApi {
     }
 
     private static String buildUrl(String fiscalSign) {
-        return String.format(URL_TEMPLATE, fiscalSign);
+        String urlTemplate = FTSProperties.getInstance().getProperty(URL_TEMPLATE_KEY);
+        return String.format(urlTemplate, fiscalSign);
     }
 
     public static FTSResult requestReceiptInfo(String fiscalSign) throws IOException {
@@ -57,6 +38,8 @@ public class FTSApi {
 
         connection.setRequestMethod("GET");
         headers.forEach(connection::setRequestProperty);
+        String password = FTSProperties.getInstance().getProperty(PASSWORD_KEY);
+        connection.addRequestProperty("Authorization", "Basic " + password);
 
         int responseCode = connection.getResponseCode();
         String data = IOUtil.readFully(connection.getInputStream());
