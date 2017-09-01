@@ -7,17 +7,19 @@ from sklearn.pipeline import Pipeline
 from sklearn.linear_model import SGDClassifier
 from sklearn.externals import joblib
 
-def training_svm(file, new_raws):
+def training_svm(file, new_raws={"GROUP_ID" : [], "NAME" : []}):
 	path = r"../dataset/" + file
-	data = pd.read_csv(path)
+	data = pd.read_csv(path, encoding='utf-8')
 	new_raws_df = pd.DataFrame(new_raws)
-	new_data = pd.concat([data, new_raws_df], axis=0) 
+	data = data.append(new_raws_df, ignore_index=True)
 	text_clf = Pipeline([('vect', CountVectorizer()),
                       ('tfidf', TfidfTransformer()),
                       ('clf', SGDClassifier(loss='hinge', penalty='l2',
-                                            alpha=1e-3, random_state=42)),
+                                            alpha=1e-3, random_state=42))
 	])
-	text_clf.fit(new_data["NAME"], data["GROUP_ID"])
+	data.to_csv(path, encoding='utf-8', index=False)
+	data = pd.read_csv(path, encoding='utf-8')
+	text_clf.fit(data["NAME"], data["GROUP_ID"])
 	joblib.dump(text_clf, 'model_svm.pkl')
 
 def predict_categories(type_model, new_list):

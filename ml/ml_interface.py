@@ -11,7 +11,7 @@ new_raws - словарь, где ключи — названия столбцо
 Использовать два ключа: NAME и GROUP_ID.
 Example: {"GROUP_ID" : [6], "NAME" : ["Мясо"]}.
 '''
-def training_svm(file, new_raws)
+def training_svm(file, new_raws={"GROUP_ID" : [], "NAME" : []})
 
 '''
 Предсказывает категории по данным товарам.
