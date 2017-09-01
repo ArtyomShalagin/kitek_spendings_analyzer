@@ -27,9 +27,9 @@ def predict_categories(type_model, new_list):
 	predicted = model.predict(new_list)
 	return [check(i) for i in predicted]
 
-def check(str):
-	if ((str == "9") or (str == "32")):
-		return "NONE"
+def check(value):
+	if ((value == "9") or (value == "32")):
+		return -1
 	else:
-		return str 
+		return int(value) 
 
