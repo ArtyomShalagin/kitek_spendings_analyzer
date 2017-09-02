@@ -18,7 +18,6 @@ def training_svm(file, new_raws={"GROUP_ID" : [], "NAME" : []}):
                                             alpha=1e-3, random_state=42))
 	])
 	data.to_csv(path, encoding='utf-8', index=False)
-	data = pd.read_csv(path, encoding='utf-8')
 	text_clf.fit(data["NAME"], data["GROUP_ID"])
 	joblib.dump(text_clf, 'model_svm.pkl')
 
