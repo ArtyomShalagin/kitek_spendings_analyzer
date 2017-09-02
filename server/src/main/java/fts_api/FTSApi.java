@@ -26,13 +26,23 @@ public class FTSApi {
         }};
     }
 
-    private static String buildUrl(String fiscalSign) {
+    private static String buildUrl(String fiscalStorage, String documentNumber, String fiscalProperty) {
         String urlTemplate = FTSProperties.getInstance().getProperty(URL_TEMPLATE_KEY);
-        return String.format(urlTemplate, fiscalSign);
+        return String.format(urlTemplate, fiscalStorage, documentNumber, fiscalProperty);
     }
 
-    public static FTSResult requestReceiptInfo(String fiscalSign) throws IOException {
-        String urlString = buildUrl(fiscalSign);
+    /**
+     * On actual receipts the parameters are fn, fd and fpd respectively
+     *
+     * @param fiscalStorage
+     * @param documentNumber
+     * @param fiscalProperty
+     * @return
+     * @throws IOException
+     */
+    public static FTSResult requestReceiptInfo(String fiscalStorage, String documentNumber, String fiscalProperty)
+            throws IOException {
+        String urlString = buildUrl(fiscalStorage, documentNumber, fiscalProperty);
         URL url = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
