@@ -1,6 +1,7 @@
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import logging
 import qrtools
+import os
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -23,6 +24,7 @@ def help(bot, update):
 
 
 def echo(bot, update):
+    logging.info('User ' + update.effective_user.name + ' sent text: ' + update.message.text)
     update.message.reply_text(update.message.text)
 
 
@@ -30,23 +32,32 @@ def error(bot, update, error):
     logger.warn('Update "%s" caused error "%s"' % (update, error))
 
 
-def qr_code_parser(bot, update):
-    update.message.reply_text("Got photo, thanks")
-
-    # seems very strange, why negative?
-    # See for ref: https://github.com/python-telegram-bot/python-telegram-bot/wiki/Code-snippets
-    max_sized_photo = update.message.photo[-1]
-    logging.info(len(update.message.photo))
-
-    photo_relative_path = 'tmp_photo.png'
+def image_processor(bot, update):
     # download photo to system, todo: what format does it have?
-    bot.get_file(max_sized_photo.file_id).download(photo_relative_path)
-    logging.info(str(max_sized_photo.width) + ' ' + str(max_sized_photo.height))
+    photo_name = '.tmp_photo.png'
 
-    qr = qrtools.QR()
-    qr.decode(photo_relative_path)
-    logging.info(qr.data)
-    update.message.reply_text('Parsed: ' + qr.data)
+    def download_image(bot, update):
+	# removing in order to get rid of problems with access rights to an old file 
+        if os.path.exists(photo_name):
+            os.remove(photo_name)
+
+        # seems very strange, why negative?
+        # See for ref: https://github.com/python-telegram-bot/python-telegram-bot/wiki/Code-snippets
+        max_sized_photo = update.message.photo[-1]
+        bot.get_file(max_sized_photo.file_id).download(photo_name)
+        os.chmod(photo_name, 511) # according to my experience, it's same as 777 in bash
+
+    def parse_qr_code():
+        qr = qrtools.QR()
+        qr.decode(photo_name)
+        return qr.data
+
+    update.message.reply_text("Got photo, thanks")
+    download_image(bot, update)
+    data = parse_qr_code()
+    logging.info('User ' + update.effective_user.name + 'sent photo with data in qr code: ' + data)
+    update.message.reply_text('Parsed from qr code: ' + data)
+
 
 
 def main():
@@ -62,7 +73,7 @@ def main():
 
     # on noncommand i.e message - echo the message on Telegram
     dp.add_handler(MessageHandler(Filters.text, echo))
-    dp.add_handler(MessageHandler(Filters.photo, qr_code_parser))
+    dp.add_handler(MessageHandler(Filters.photo, image_processor))
 
     # log all errors
     dp.add_error_handler(error)
