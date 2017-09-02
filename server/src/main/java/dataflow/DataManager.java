@@ -1,5 +1,7 @@
 package dataflow;
 
+import fts_api.data.ReceiptEntryInfo;
+import fts_api.data.ReceiptInfo;
 import org.supercsv.cellprocessor.constraint.NotNull;
 import org.supercsv.cellprocessor.ift.CellProcessor;
 import org.supercsv.io.CsvBeanReader;
@@ -7,6 +9,7 @@ import org.supercsv.io.CsvBeanWriter;
 import org.supercsv.io.ICsvBeanReader;
 import org.supercsv.io.ICsvBeanWriter;
 import org.supercsv.prefs.CsvPreference;
+import util.Util;
 
 import java.io.File;
 import java.io.FileReader;
@@ -117,5 +120,15 @@ public class DataManager {
                 beanWriter.close();
             }
         }
+    }
+
+    public static List<EntryBean> receiptToBeans(ReceiptInfo receipt) {
+        List<EntryBean> data = new ArrayList<>();
+        for (ReceiptEntryInfo entryInfo : receipt.items) {
+            EntryBean entry = new EntryBean(String.valueOf(entryInfo.category), entryInfo.name,
+                    String.valueOf(entryInfo.price), receipt.date, Util.dateToDayOfWeek(receipt.date));
+            data.add(entry);
+        }
+        return data;
     }
 }
