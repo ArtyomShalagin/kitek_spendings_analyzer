@@ -27,6 +27,12 @@ public class Server implements AutoCloseable {
                 return statsWritten;
             });
 
+            get("/add_qr_direct", (req, res) -> {
+
+
+                return "ok";
+            });
+
             post("/add_qr", (req, res) -> {
                 apiExecutor.submit(() -> {
                     try {

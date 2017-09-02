@@ -34,6 +34,7 @@ dependencies {
 //    compile "com.sparkjava:spark-kotlin:1.0.0-alpha"
 //    compile "org.jetbrains.kotlin:kotlin-stdlib-jre8:$kotlin_version"
     compile name: "jep-3.7.0"
+    runtime name: "jep-3.7.0"
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
