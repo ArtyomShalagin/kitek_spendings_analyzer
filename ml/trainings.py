@@ -8,7 +8,7 @@ from sklearn.linear_model import SGDClassifier
 from sklearn.externals import joblib
 
 def training_svm(file, new_raws={"GROUP_ID" : [], "NAME" : []}):
-	path = r"../dataset/" + file
+	path = r"dataset/" + file
 	data = pd.read_csv(path, encoding='utf-8')
 	new_raws_df = pd.DataFrame(new_raws)
 	data = data.append(new_raws_df, ignore_index=True)
@@ -22,7 +22,7 @@ def training_svm(file, new_raws={"GROUP_ID" : [], "NAME" : []}):
 	joblib.dump(text_clf, 'model_svm.pkl')
 
 def predict_categories(type_model, new_list):
-	model = joblib.load("model_" + type_model + ".pkl")
+	model = joblib.load("ml/model_" + type_model + ".pkl")
 	predicted = model.predict(new_list)
 	return [check(i) for i in predicted]
 
