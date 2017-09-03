@@ -26,13 +26,13 @@ public class FTSApi {
         }};
     }
 
-    private static String buildUrl(String fiscalSign) {
+    private static String buildUrl(String fss, String tickets, String fiscalSign) {
         String urlTemplate = FTSProperties.getInstance().getProperty(URL_TEMPLATE_KEY);
-        return String.format(urlTemplate, fiscalSign);
+        return String.format(urlTemplate, fss, tickets, fiscalSign);
     }
 
-    public static FTSResult requestReceiptInfo(String fiscalSign) throws IOException {
-        String urlString = buildUrl(fiscalSign);
+    public static FTSResult requestReceiptInfo(String fss, String tickets, String fiscalSign) throws IOException {
+        String urlString = buildUrl(fss, tickets, fiscalSign);
         URL url = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
