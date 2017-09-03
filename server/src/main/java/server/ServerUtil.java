@@ -102,8 +102,6 @@ public class ServerUtil {
         byte[] data = Files.readAllBytes(path);
 
         HttpServletResponse raw = response.raw();
-//        response.header("Content-Disposition", "attachment; filename=image.png");
-//        response.type("application/force-download");
         raw.getOutputStream().write(data);
         raw.getOutputStream().flush();
         raw.getOutputStream().close();
@@ -127,7 +125,7 @@ public class ServerUtil {
 
             return entryBean -> {
                 Date entryDate = Date.valueOf(entryBean.date);
-                return entryDate.compareTo(beginDate) > 0 && entryDate.compareTo(endDate) < 0;
+                return entryDate.compareTo(beginDate) >= 0 && entryDate.compareTo(endDate) <= 0;
             };
         }
 

@@ -14,6 +14,7 @@ import util.Util;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -79,10 +80,12 @@ public class Server implements AutoCloseable {
                         Predicate<EntryBean> pred = ServerUtil.Predicates.dateRange(beginPeriod, endPeriod);
                         String path = filterToPath(username, pred);
                         result = visualizerInterface.generalStats(path);
-                        ret = new CatValue();
+//                        ret = new CatValue();
                         if (result != null) {
-                            ret.result = result.parallelStream().map((p) -> new CatValue.CatValuePair(p.first, p.second)).collect(Collectors.toList());
-                            return objectMapper.writeValueAsString(ret);
+//                            ret.result = result.parallelStream().map((p) -> new CatValue.CatValuePair(p.first, p.second)).collect(Collectors.toList());
+//                            return objectMapper.writeValueAsString(ret);
+                            ServerUtil.uploadFile(res, path.substring(0, path.lastIndexOf('.')) + "_plot.png");
+                            return res.raw();
                         } else {
                             res.status(400);
                             return "no result obtained: what have i become";
@@ -93,10 +96,15 @@ public class Server implements AutoCloseable {
                         path = filterToPath(username, pred);
                         int itemCount = Integer.parseInt(req.queryParams("amount_items"));
                         result = visualizerInterface.maxSpendings(path, itemCount);
-                        ret = new CatValue();
+//                        ret = new CatValue();
                         if (result != null) {
-                            ret.result = result.parallelStream().map((p) -> new CatValue.CatValuePair(p.first, p.second)).collect(Collectors.toList());
-                            return objectMapper.writeValueAsString(ret);
+//                            ret.result = result.parallelStream()
+//                                    .map(p -> new CatValue.CatValuePair(p.first, p.second))
+//                                    .collect(Collectors.toList());
+                            return "Максимальные траты:\n" + result.stream()
+                                    .map(pair -> pair.first + " - " + Util.categoryIndexToName(pair.second))
+                                    .collect(Collectors.joining("\n"));
+//                            return objectMapper.writeValueAsString(ret);
                         } else {
                             res.status(400);
                             return "no result obtained: what have i become";
@@ -149,6 +157,23 @@ public class Server implements AutoCloseable {
             post("/add_data", (req, res) -> {
                 Map<String, String> params = ServerUtil.parseParams(req.body());
                 String type = params.get("type");
+                String username = params.get("username");
+                if (type == null) {
+                    logger.info("Post request does not have type param");
+                    res.status(400);
+                    return "no type param";
+                }
+                if (username == null) {
+                    logger.info("Post request does not have username param");
+                    res.status(400);
+                    return "no username param";
+                }
+                String dataString = params.get("data");
+                String[] data = dataString == null ? null : dataString.split("\n");
+                String currDate = Util.getCurrentDateString();
+                String currDayOfWeek = Util.dateToDayOfWeek(currDate);
+
+                List<EntryBean> beans = new ArrayList<>();
 
                 switch (type) {
                     case "receipt":
@@ -160,21 +185,70 @@ public class Server implements AutoCloseable {
                             res.status(400);
                             return "err";
                         }
-                        String username = params.get("username");
-                        if (username == null) {
-                            System.err.println("Post request does not have username param");
-                            res.status(400);
-                            return "err";
-                        }
                         ReceiptInfo receipt = ServerUtil.handleNewReceipt(username, fn, fd, fpd);
-                        logger.info("database updated successfully for user " + username);
+                        if (receipt == null) {
+                            logger.info("Unable to handle new receipt");
+                            res.status(400);
+                            return "unable to handle receipt";
+                        } else {
+                            logger.info("Database updated successfully for user " + username);
+                            res.status(200);
+
+                            return "Получена информация о покупках:\n" + receipt.items.stream()
+                                    .map(entry -> entry.name + " - " + Util.categoryIndexToName(entry.category))
+                                    .collect(Collectors.joining("\n"));
+                        }
+
+                    case "raw_products": // with name
+                        if (data == null) {
+                            logger.info("Error while parsing raw data");
+                            res.status(400);
+                            return "no data param";
+                        }
+                        try {
+                            for (String entry : data) {
+                                String[] splitted = entry.split(":");
+                                String name = splitted[0];
+                                String price = splitted[1];
+                                String category = splitted[2];
+                                beans.add(new EntryBean(category, name, price, currDate, currDayOfWeek));
+                            }
+                        } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
+                            logger.info("Error while parsing raw data");
+                            res.status(400);
+                            return "invalid data format";
+                        }
                         res.status(200);
-                        return objectMapper.writeValueAsString(receipt);
+                        DataManager.appendUserData(username, beans);
+                        return "success";
+
+                    case "raw_categories": // category:price
+                        if (data == null) {
+                            logger.info("Error while parsing raw data");
+                            res.status(400);
+                            return "no data param";
+                        }
+                        try {
+                            for (String entry : data) {
+                                String[] splitted = entry.split(":");
+                                String category = splitted[0];
+                                String price = splitted[1];
+                                beans.add(new EntryBean(category, "_noname", price, currDate, currDayOfWeek));
+                            }
+                        } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
+                            logger.info("Error while parsing raw data");
+                            res.status(400);
+                            return "invalid data format";
+                        }
+                        res.status(200);
+                        DataManager.appendUserData(username, beans);
+                        return "success";
                     default:
                         res.status(400);
-                        return "unknown tp";
+                        return "unknown type";
                 }
             });
+
             path("/proposed", () -> {
                 path("/add_data", () -> {
                     post("/receipt", (req, res) -> {
@@ -221,7 +295,7 @@ public class Server implements AutoCloseable {
     private String filterToPath(String username, Predicate<EntryBean> pred) throws IOException {
         List<EntryBean> data;
         data = ServerUtil.getFiltered(username, pred);
-        String path = "visualization/" + username + ".csv";
+        String path = "tmp_data/" + username + ".csv";
         DataManager.writeToFile(path, data);
         return path;
     }

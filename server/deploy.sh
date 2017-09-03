@@ -23,6 +23,7 @@ cp -r user_data $deploy_dir
 
 cp fts.properties $deploy_dir/
 echo "Don't forget to add fts api password in $deploy_dir/fts.properties"
+cp categories.properties $deploy_dir/
 
 touch $deploy_dir/py_interface.properties
 echo "ml_scripts_dir=ml/" >> $deploy_dir/py_interface.properties

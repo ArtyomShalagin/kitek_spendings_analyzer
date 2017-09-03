@@ -1,6 +1,7 @@
 package py_interface;
 
 import jep.JepException;
+import util.JepHolder;
 import util.Pair;
 
 import java.io.File;
@@ -9,8 +10,12 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import static util.JepHolder.jepInitedOrWarn;
+
+@SuppressWarnings("unchecked")
 public class PyMlInterface extends PyInterface {
 
     private static final String[] initScripts = {"trainings.py"};
@@ -31,17 +36,27 @@ public class PyMlInterface extends PyInterface {
             return;
         }
         try {
-            List<Integer> ids = newData.stream()
-                    .map(pair -> pair.first)
-                    .collect(Collectors.toList());
-            List<String> names = newData.stream()
-                    .map(pair -> pair.second)
-                    .collect(Collectors.toList());
-            PyList pyGroupId = new PyList(ids, String::valueOf, jep);
-            PyList pyName = new PyList(names, s -> "'" + s + "'", jep);
-            jep.eval(String.format("_new_raws = {'GROUP_ID': %s, 'NAME': %s}", pyGroupId.name, pyName.name));
-            jep.eval(String.format("training_svm('%s', _new_raws)", filename));
-        } catch (JepException e) {
+            JepHolder.execute(jep -> {
+                try {
+                    if (jep == null) {
+                        return null;
+                    }
+                    List<Integer> ids = newData.stream()
+                            .map(pair -> pair.first)
+                            .collect(Collectors.toList());
+                    List<String> names = newData.stream()
+                            .map(pair -> pair.second)
+                            .collect(Collectors.toList());
+                    PyList pyGroupId = new PyList(ids, String::valueOf, jep);
+                    PyList pyName = new PyList(names, s -> "'" + s + "'", jep);
+                    jep.eval(String.format("_new_raws = {'GROUP_ID': %s, 'NAME': %s}", pyGroupId.name, pyName.name));
+                    jep.eval(String.format("training_svm('%s', _new_raws)", filename));
+                } catch (JepException e) {
+                    System.err.println("Error in python interface: " + e.getMessage());
+                }
+                return null;
+            });
+        } catch (ExecutionException | InterruptedException e) {
             System.err.println("Error in python interface: " + e.getMessage());
         }
     }
@@ -57,19 +72,29 @@ public class PyMlInterface extends PyInterface {
             return null;
         }
         try {
-            PyList pyProducts = new PyList(products, s -> "'" + s + "'", jep);
-            Object result = jep.getValue(String.format("predict_categories('svm', %s)", pyProducts.name));
-            if (result instanceof List) {
-                //noinspection unchecked
-                List<Long> list = (List<Long>) result;
-                return list.stream()
-                        .map(l -> (int) ((long) l))
-                        .collect(Collectors.toList());
-            } else {
-                System.err.println("Ml interface returned unexpected value");
-                return null;
-            }
-        } catch (JepException e) {
+            return (List<Integer>) JepHolder.execute(jep -> {
+                try {
+                    if (jep == null) {
+                        return null;
+                    }
+                    PyList pyProducts = new PyList(products, s -> "'" + s + "'", jep);
+                    Object result = jep.getValue(String.format("predict_categories('svm', %s)", pyProducts.name));
+                    if (result instanceof List) {
+                        //noinspection unchecked
+                        List<Long> list = (List<Long>) result;
+                        return list.stream()
+                                .map(l -> (int) ((long) l))
+                                .collect(Collectors.toList());
+                    } else {
+                        System.err.println("Ml interface returned unexpected value");
+                        return null;
+                    }
+                } catch (JepException e) {
+                    System.err.println("Error in python interface: " + e.getMessage());
+                    return null;
+                }
+            });
+        } catch (ExecutionException | InterruptedException e) {
             System.err.println("Error in python interface: " + e.getMessage());
             return null;
         }

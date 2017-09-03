@@ -1,10 +1,30 @@
 package util;
 
+import java.io.File;
+import java.io.IOException;
 import java.sql.Date;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
+import java.util.*;
 
 public class Util {
+    private static Map<Integer, String> catIndexToName = new HashMap<>();
+    private static Map<String, Integer> catNameToIndex = new HashMap<>();
+
+    static {
+        try {
+            Scanner in = new Scanner(new File("categories.properties"));
+            while (in.hasNextLine()) {
+                String line = in.nextLine();
+                String[] splitted = line.split("=");
+                int index = Integer.parseInt(splitted[0]);
+                String name = splitted[1];
+                catIndexToName.put(index, name);
+                catNameToIndex.put(name, index);
+            }
+        } catch (IOException | ArrayIndexOutOfBoundsException | NumberFormatException e) {
+            System.err.println("Unable to read categories properties: " + e.getMessage());
+        }
+    }
+
     public static String dayOfWeekName(int index) {
         switch (index) {
             case 1:
@@ -41,5 +61,23 @@ public class Util {
             dayOfWeekIndex = 7;
         }
         return dayOfWeekName( dayOfWeekIndex);
+    }
+
+    public static String getCurrentDateString() {
+        Calendar calendar = Calendar.getInstance();
+        String year = String.valueOf(calendar.get(Calendar.YEAR));
+        String month = String.valueOf(calendar.get(Calendar.MONTH) + 1);
+        String day = String.valueOf(calendar.get(Calendar.DAY_OF_MONTH)); // possibly +1 as well?
+        if (month.length() == 1) {
+            month = "0" + month;
+        }
+        if (day.length() == 1) {
+            day = "0" + day;
+        }
+        return year + "-" + month + "-" + day;
+    }
+
+    public static String categoryIndexToName(int index) {
+        return catIndexToName.getOrDefault(index, "undefined category");
     }
 }

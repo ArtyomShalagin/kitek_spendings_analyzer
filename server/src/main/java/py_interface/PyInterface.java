@@ -1,31 +1,30 @@
 package py_interface;
 
-import jep.Jep;
 import jep.JepException;
+import util.JepHolder;
+
+import java.util.concurrent.ExecutionException;
 
 public abstract class PyInterface {
-    protected Jep jep;
 
     protected PyInterface(String scriptsDirKey, String... initScripts) {
         try {
-            jep = new Jep();
-            String scriptsDir = PyInterfaceProperties.getInstance().getProperty(scriptsDirKey);
-            for (String scriptName : initScripts) {
-                jep.runScript(scriptsDir + scriptName);
-            }
-        } catch (JepException e) {
-            System.err.println("Unable to initialize Jep: " + e.getMessage());
+            JepHolder.execute(jep -> {
+                try {
+                    if (jep == null) {
+                        return null;
+                    }
+                    String scriptsDir = PyInterfaceProperties.getInstance().getProperty(scriptsDirKey);
+                    for (String scriptName : initScripts) {
+                        jep.runScript(scriptsDir + scriptName);
+                    }
+                } catch (JepException e) {
+                    System.err.println("Unable to initialize py interface: " + e.getMessage());
+                }
+                return null;
+            });
+        } catch (ExecutionException | InterruptedException e) {
+            System.err.println("Unable to initialize python interface: " + e.getMessage());
         }
-    }
-
-    public boolean jepInited() {
-        return jep != null;
-    }
-
-    protected boolean jepInitedOrWarn() {
-        if (!jepInited()) {
-            System.err.println("Warning: Jep is not initialized");
-        }
-        return jepInited();
     }
 }

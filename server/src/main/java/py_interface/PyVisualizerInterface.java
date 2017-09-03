@@ -1,13 +1,18 @@
 package py_interface;
 
 import jep.JepException;
+import util.JepHolder;
 import util.Pair;
 
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import static util.JepHolder.jepInitedOrWarn;
+
+@SuppressWarnings("unchecked")
 public class PyVisualizerInterface extends PyInterface {
 
     private static final String[] initScripts = {"draw_plots.py"};
@@ -20,28 +25,38 @@ public class PyVisualizerInterface extends PyInterface {
     /**
      * Get top money-consuming categories
      *
-     * @param filename name of .csv file with user data (in /visualization/, we will move that to configs I swear)
+     * @param filepath name of .csv file with user data
      * @param amountOfItems how many top categories we need
      * @return sorted List of Pairs, each pair mapping category to amount of money spent, or null on jep error
      */
     @SuppressWarnings("Duplicates")
-    public List<Pair<String, Integer>> maxSpendings(String filename, int amountOfItems) {
+    public List<Pair<String, Integer>> maxSpendings(String filepath, int amountOfItems) {
         if (!jepInitedOrWarn()) {
             return null;
         }
         try {
-            Object result = jep.invoke("max_spending", filename, amountOfItems);
-            if (!(result instanceof HashMap)) {
-                System.err.println("Error in python interface: unexpected return value in method max_spending");
-                return null;
-            }
-            //noinspection unchecked,ConstantConditions
-            HashMap<String, String> map = (HashMap<String, String>) result;
-            return map.keySet().stream()
-                    .map(key -> new Pair<>(key, Integer.parseInt(map.get(key))))
-                    .sorted(Comparator.comparingInt(p -> p.second))
-                    .collect(Collectors.toList());
-        } catch (JepException e) {
+            return (List<Pair<String, Integer>>) JepHolder.execute(jep -> {
+                try {
+                    if (jep == null) {
+                        return null;
+                    }
+                    Object result = jep.invoke("max_spending", filepath, amountOfItems);
+                    if (!(result instanceof HashMap)) {
+                        System.err.println("Error in python interface: unexpected return value in method max_spending");
+                        return null;
+                    }
+                    //noinspection unchecked,ConstantConditions
+                    HashMap<String, String> map = (HashMap<String, String>) result;
+                    return map.keySet().stream()
+                            .map(key -> new Pair<>(key, Integer.parseInt(map.get(key))))
+                            .sorted(Comparator.comparingInt(p -> p.second))
+                            .collect(Collectors.toList());
+                } catch (JepException e) {
+                    System.err.println("Error in python interface: " + e.getMessage());
+                    return null;
+                }
+            });
+        } catch (ExecutionException | InterruptedException e) {
             System.err.println("Error in python interface: " + e.getMessage());
             return null;
         }
@@ -50,18 +65,27 @@ public class PyVisualizerInterface extends PyInterface {
     /**
      * Draw plot of weekly spendings
      *
-     * @param filename name of .csv file with data (in /visualization/, we will move that to configs I swear)
+     * @param filepath name of .csv file with data
      * @return name of image file, or null on jep error
      */
-    // todo should we read the image here?
-    public String weeklySpendings(String filename) {
+    public String weeklySpendings(String filepath) {
         if (!jepInitedOrWarn()) {
             return null;
         }
         try {
-            jep.invoke("days_of_week_spending", filename);
-            return filename.substring(0, filename.lastIndexOf('.')) + "_plot.png";
-        } catch (JepException e) {
+            return (String) JepHolder.execute(jep -> {
+                try {
+                    if (jep == null) {
+                        return "";
+                    }
+                    jep.invoke("days_of_week_spending", filepath);
+                    return filepath.substring(0, filepath.lastIndexOf('.')) + "_plot.png";
+                } catch (JepException e) {
+                    System.err.println("Error in python interface: " + e.getMessage());
+                    return null;
+                }
+            });
+        } catch (ExecutionException | InterruptedException e) {
             System.err.println("Error in python interface: " + e.getMessage());
             return null;
         }
@@ -70,46 +94,66 @@ public class PyVisualizerInterface extends PyInterface {
     /**
      * Draw plot of total spendings by category
      *
-     * @param filename name of .csv file with data (in /visualization/, we will move that to configs I swear)
+     * @param filepath name of .csv file with data
      * @return name of image file, or null on jep error
      */
     // todo should we read the image here?
-    public String categoriesSpendings(String filename) {
+    public String categoriesSpendings(String filepath) {
         if (!jepInitedOrWarn()) {
             return null;
         }
         try {
-            jep.invoke("categories_spending", filename);
-            return filename.substring(0, filename.lastIndexOf('.')) + "_plot.png";
-        } catch (JepException e) {
+            return (String) JepHolder.execute(jep -> {
+                try {
+                    if (jep == null) {
+                        return "";
+                    }
+                    jep.invoke("categories_spending", filepath);
+                    return filepath.substring(0, filepath.lastIndexOf('.')) + "_plot.png";
+                } catch (JepException e) {
+                    System.err.println("Error in python interface: " + e.getMessage());
+                    return null;
+                }
+            });
+        } catch (ExecutionException | InterruptedException e) {
             System.err.println("Error in python interface: " + e.getMessage());
             return null;
         }
     }
 
     /**
-     * Acts like maxSpendings(filename, Integer.MAX_VALUE) plus draws plot in filename_plot.png
+     * Acts like maxSpendings(filepath, Integer.MAX_VALUE) plus draws plot in filename_plot.png
      *
-     * @param filename name of .csv file with user data (in /visualization/, we will move that to configs I swear)
+     * @param filepath name of .csv file with user data
      * @return sorted List of Pairs, each pair mapping category to amount of money spent, or null on jep error
      */
-    public List<Pair<String, Integer>> generalStats(String filename) {
+    public List<Pair<String, Integer>> generalStats(String filepath) {
         if (!jepInitedOrWarn()) {
             return null;
         }
         try {
-            Object result = jep.invoke("general_stats", filename);
-            if (!(result instanceof HashMap)) {
-                System.err.println("Error in python interface: unexpected return value in method max_spending");
-                return null;
-            }
-            //noinspection unchecked,ConstantConditions
-            HashMap<String, String> map = (HashMap<String, String>) result;
-            return map.keySet().stream()
-                    .map(key -> new Pair<>(key, Integer.parseInt(map.get(key))))
-                    .sorted(Comparator.comparingInt(p -> p.second))
-                    .collect(Collectors.toList());
-        } catch (JepException e) {
+            return (List<Pair<String, Integer>>) JepHolder.execute(jep -> {
+                try {
+                    if (jep == null) {
+                        return null;
+                    }
+                    Object result = jep.invoke("general_stats", filepath);
+                    if (!(result instanceof HashMap)) {
+                        System.err.println("Error in python interface: unexpected return value in method max_spending");
+                        return null;
+                    }
+                    //noinspection unchecked,ConstantConditions
+                    HashMap<String, String> map = (HashMap<String, String>) result;
+                    return map.keySet().stream()
+                            .map(key -> new Pair<>(key, Integer.parseInt(map.get(key))))
+                            .sorted(Comparator.comparingInt(p -> p.second))
+                            .collect(Collectors.toList());
+                } catch (JepException e) {
+                    System.err.println("Error in python interface: " + e.getMessage());
+                    return null;
+                }
+            });
+        } catch (ExecutionException | InterruptedException e) {
             System.err.println("Error in python interface: " + e.getMessage());
             return null;
         }

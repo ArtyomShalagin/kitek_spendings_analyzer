@@ -10,9 +10,47 @@ from pylab import rcParams
 import pandas as pd
 import seaborn as sns
 
+
+
+all_categories = {
+   6 : "Продукты питания",
+   7 : "Табачные изделия", 
+   12 : "Бытовая техника и электроника",
+   14 : "Здоровье и красота",
+   15 : "Муз.инструменты",
+   16 : "Канцтовары",
+   17 : "Текстильные товары",
+   18 : "Спорт",
+   19 : "Пакеты, упаковки",
+   20 : "Бытовые услуги",
+   21 : "Одежда и галантерея",
+   22 : "Автомобили и мотоциклы",
+   24 : "Товары для дома", 
+   25 : "Обувь", 
+   26 : "Десткие товары, игрушки", 
+   27 : "Аптека",
+   28 : "Стройматериалы", 
+   29 : "Сувениры",
+   30 : "Цветы",
+   34 : "Алкоголь",
+   35 : "Пиво и слабоалкогольные напитки",
+   36 : "Компьютерная техника и ПО",
+   37 : "Зоотовары",
+   38 : "Мебель",
+   52 : "Книги",
+   59 : "Игрушки для взрослых",
+   60 : "Ювелирные изделия",
+   100 : "Отдых и развлечения",
+   101 : "Подарки",
+   102 : "Транспорт",
+   103 : "Квартира и связь",
+   104 : "Другое"
+}
+
 def max_spending(file_data, amount_items):
 	df = pd.read_csv(file_data)
-	dt = df.groupby(["Category"])["Cost"].agg([np.sum])\
+	df["category"] = df["category"].map(all_categories)
+	dt = df.groupby(["category"])["cost"].agg([np.sum])\
 									.sort_values(by="sum", ascending=False)\
 									.head(amount_items)\
 									.to_dict()
@@ -24,14 +62,15 @@ def days_of_week_spending(file_data):
 	rcParams.update({'figure.autolayout': True})
 	sns.set(style="dark")
 	df = pd.read_csv(file_data)
+	df["category"] = df["category"].map(all_categories)
 	m = file_data.index(".")
-	result = df.groupby(["DayOfWeek", "Category"])["Cost"]\
+	result = df.groupby(["dayOfWeek", "category"])["cost"]\
 			   .agg([np.sum])\
-			   .reindex(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', "Вс"], level='DayOfWeek')
+			   .reindex(['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', "Вс"], level='dayOfWeek')
 	g = result["sum"].groupby(level=0, group_keys=False)\
 					 .nlargest(4)
 
-	gr = sns.factorplot(x="DayOfWeek", y="sum", hue="Category", data=g.reset_index(), kind="bar",
+	gr = sns.factorplot(x="dayOfWeek", y="sum", hue="category", data=g.reset_index(), kind="bar",
                    palette="Paired", size=6, aspect=1.5, legend=False)
 	plt.legend(loc='upper right')
 	gr.savefig(file_data[:m] + "_plot.png")
@@ -41,18 +80,18 @@ def categories_spending(file_data):
 	rcParams.update({'figure.autolayout': True})
 	
 	df = pd.read_csv(file_data)
-
+	df["category"] = df["category"].map(all_categories)
 	m = file_data.index(".")
 	
-	ax = df.groupby(["Category", "Date"])["Cost"]\
-			   .sum().unstack("Category").plot()
+	ax = df.groupby(["category", "date"])["cost"]\
+			   .sum().unstack("category").plot()
 	plt.legend(loc='upper right')
 	plt.savefig(file_data[:m] + "_plot.png")	
 
 
 def general_stats(file_data):
 	df = pd.read_csv(file_data)
-	
+	df["category"] = df["category"].map(all_categories)
 	m = file_data.index(".")
 
 	dt = df.groupby(["category"])["cost"].agg([np.sum])\
@@ -60,22 +99,19 @@ def general_stats(file_data):
 									.to_dict()['sum']
 	labels = []
 	sizes = []
-	summary = 0
-	for key, value in dt.items():
-		summary = summary + value
+	#summary = 0
+	#for key, value in dt.items():
+	#	summary = summary + value
 	
-	border = summary * 0.03
-	other = 0
+	#border = summary * 0.01
+	#other = 0
 
 	for key, value in dt.items():
-		if (value > border):
-			labels.append(key)
-			sizes.append(value)
-		else:
-			other = other + value
-
-	labels.append("Остальное")
-	sizes.append(other)	
+		labels.append(key)
+		sizes.append(value)
+		
+	#labels.append("Остальное")
+	#sizes.append(other)	
 
 
 	plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140, shadow=True)
@@ -87,7 +123,7 @@ def general_stats(file_data):
 #max_spending("norm_test_data.csv", 3)
 #days_of_week_spending("norm_test_data.csv")
 #categories_spending("norm_test_data.csv")
-#general_stats("norm_test_data.csv")
+general_stats("evarand.csv")
 
 
 
