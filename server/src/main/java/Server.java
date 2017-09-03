@@ -11,10 +11,13 @@ import spark.Request;
 import spark.Response;
 import util.Pair;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static spark.Spark.*;
@@ -30,12 +33,28 @@ public class Server implements AutoCloseable {
         port(4567);
 
         path("/api", () -> {
+            get("/file", (req, res) -> {
+                String name = req.queryParams("filename");
+                if (name == null) {
+                    res.status(400);
+                    return "filename not specified";
+                }
+
+                if (!Paths.get(name).toFile().exists()) {
+                    res.status(400);
+                    return "file does not exist";
+                }
+
+                ServerUtil.uploadFile(res, name);
+                return ""; // wont be empty due to upload
+            });
+
             get("/stats", (req, res) -> {
                 String type = req.queryParams("type");
                 String username = req.queryParams("username");
-                String filename = null;
-                CatValue ret = null;
-                List<Pair<String, Integer>> result = null;
+                String filename;
+                CatValue ret;
+                List<Pair<String, Integer>> result;
                 if (type == null) {
                     res.status(400);
                     return "type not specified";
@@ -56,9 +75,9 @@ public class Server implements AutoCloseable {
 
                 switch (type) {
                     case "general_stats":
-                        List<EntryBean> data = ServerUtil.readAndFilterData(username, beginPeriod, endPeriod);
-                        DataManager.writeToFile("visualization/" + username + ".csv", data);
-                        result = visualizerInterface.generalStats("visualization/" + username + ".csv");
+                        Predicate<EntryBean> pred = ServerUtil.Predicates.dateRange(beginPeriod, endPeriod);
+                        String path = filterToPath(username, pred);
+                        result = visualizerInterface.generalStats(path);
                         ret = new CatValue();
                         if (result != null) {
                             ret.result = result.parallelStream().map((p) -> new CatValue.CatValuePair(p.first, p.second)).collect(Collectors.toList());
@@ -68,7 +87,11 @@ public class Server implements AutoCloseable {
                             return "no result obtained: what have i become";
                         }
                     case "max_spendings":
-                        result = visualizerInterface.maxSpendings(getPath(username), 5);
+//                        data = ServerUtil.readAndFilterData(username, beginPeriod, endPeriod);
+                        pred = ServerUtil.Predicates.dateRange(beginPeriod, endPeriod);
+                        path = filterToPath(username, pred);
+                        int itemCount = Integer.parseInt(req.queryParams("amount_items"));
+                        result = visualizerInterface.maxSpendings(path, itemCount);
                         ret = new CatValue();
                         if (result != null) {
                             ret.result = result.parallelStream().map((p) -> new CatValue.CatValuePair(p.first, p.second)).collect(Collectors.toList());
@@ -78,10 +101,38 @@ public class Server implements AutoCloseable {
                             return "no result obtained: what have i become";
                         }
                     case "weekly_spendings":
-                        filename = visualizerInterface.weeklySpendings(getPath(username));
+                    case "days_of_week_spending":
+                        pred = ServerUtil.Predicates.dateRange(beginPeriod, endPeriod);
+                        String daysRaw = req.queryParams("days_of_week");
+                        List<String> days = ServerUtil.parseList(daysRaw);
+                        String catsRaw = req.queryParams("categories");
+                        List<String> cats = ServerUtil.parseList(catsRaw);
+
+                        if (days != null) {
+                            pred.and(ServerUtil.Predicates.matchingList(EntryBean::getDayOfWeek, days));
+                        }
+
+                        if (cats != null) {
+                            pred.and(ServerUtil.Predicates.matchingList(EntryBean::getCategory, cats));
+                        }
+
+                        path = filterToPath(username, pred);
+
+                        filename = visualizerInterface.weeklySpendings(path);
                         return "{\"filename\":\"" + filename + "\"}";
-                    case "categories_spendings":
-                        filename = visualizerInterface.categoriesSpendings(getPath(username));
+                    case "categories_spending":
+                        pred = ServerUtil.Predicates.dateRange(beginPeriod, endPeriod);
+
+                        catsRaw = req.queryParams("categories");
+                        cats = ServerUtil.parseList(catsRaw);
+
+                        if (cats != null) {
+                            pred.and(ServerUtil.Predicates.matchingList(EntryBean::getCategory, cats));
+                        }
+
+                        path = filterToPath(username, pred);
+
+                        filename = visualizerInterface.categoriesSpendings(path);
                         return "{\"filename\":\"" + filename + "\"}";
 
                     default:
@@ -159,6 +210,14 @@ public class Server implements AutoCloseable {
         notFound(this::fourOhFourClause);
         internalServerError(this::fiveOhOhClause);
         exception(Exception.class, this::exceptionClause);
+    }
+
+    private String filterToPath(String username, Predicate<EntryBean> pred) throws IOException {
+        List<EntryBean> data;
+        data = ServerUtil.getFiltered(username, pred);
+        String path = "visualization/" + username + ".csv";
+        DataManager.writeToFile(path, data);
+        return path;
     }
 
     private String fourOhFourClause(Request req, Response res) {

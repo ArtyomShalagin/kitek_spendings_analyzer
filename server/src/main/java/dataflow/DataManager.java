@@ -20,6 +20,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * User data is now stored in DATA_DIR/username/
@@ -63,6 +65,10 @@ public class DataManager {
     private static Object getSyncToken(String username) {
         syncTokens.putIfAbsent(username, new Object());
         return syncTokens.get(username);
+    }
+
+    private static List<EntryBean> filterWith(List<EntryBean> data, Predicate<EntryBean> pred) {
+        return data.parallelStream().filter(pred).collect(Collectors.toList());
     }
 
     private static void createFileIfAbsent(String filepath) throws IOException {
