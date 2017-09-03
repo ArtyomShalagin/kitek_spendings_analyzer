@@ -13,10 +13,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.sql.Date;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class ServerUtil {
@@ -87,5 +85,17 @@ public class ServerUtil {
         raw.getOutputStream().write(data);
         raw.getOutputStream().flush();
         raw.getOutputStream().close();
+    }
+
+    public static List<EntryBean> readAndFilterData(String username, String begin, String end) throws IOException {
+        List<EntryBean> data = DataManager.getUserData(username);
+        Date beginDate = Date.valueOf(begin);
+        Date endDate = Date.valueOf(end);
+        return data.stream()
+                .filter(entry -> {
+                    Date entryDate = Date.valueOf(entry.date);
+                    return entryDate.compareTo(beginDate) > 0 && entryDate.compareTo(endDate) < 0;
+                })
+                .collect(Collectors.toList());
     }
 }

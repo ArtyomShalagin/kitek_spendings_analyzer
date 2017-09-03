@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 public class PyVisualizerInterface extends PyInterface {
 
-    private static final String[] initScripts = {};
+    private static final String[] initScripts = {"draw_plots.py"};
     private static final String SCRIPTS_DIR_KEY = "visualizer_scripts_dir";
 
     public PyVisualizerInterface() {
@@ -91,23 +91,22 @@ public class PyVisualizerInterface extends PyInterface {
      * Acts like maxSpendings(filename, Integer.MAX_VALUE) plus draws plot in filename_plot.png
      *
      * @param filename name of .csv file with user data (in /visualization/, we will move that to configs I swear)
-     * @param amountOfItems how many top categories we need
      * @return sorted List of Pairs, each pair mapping category to amount of money spent, or null on jep error
      */
-    public List<Pair<String, Integer>> generalStats(String filename, int amountOfItems) {
+    public List<Pair<String, Integer>> generalStats(String filename) {
         if (!jepInitedOrWarn()) {
             return null;
         }
         try {
-            Object result = jep.invoke("generalStats", filename, amountOfItems);
+            Object result = jep.invoke("general_stats", filename);
             if (!(result instanceof HashMap)) {
                 System.err.println("Error in python interface: unexpected return value in method max_spending");
                 return null;
             }
             //noinspection unchecked,ConstantConditions
-            HashMap<String, Integer> map = (HashMap<String, Integer>) result;
+            HashMap<String, String> map = (HashMap<String, String>) result;
             return map.keySet().stream()
-                    .map(key -> new Pair<>(key, map.get(key)))
+                    .map(key -> new Pair<>(key, Integer.parseInt(map.get(key))))
                     .sorted(Comparator.comparingInt(p -> p.second))
                     .collect(Collectors.toList());
         } catch (JepException e) {

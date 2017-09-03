@@ -1,6 +1,10 @@
+# coding=UTF-8
+
 import pandas as pd
 import numpy as np
 import csv
+import matplotlib
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 from pylab import rcParams
 import pandas as pd
@@ -51,7 +55,7 @@ def general_stats(file_data):
 	
 	m = file_data.index(".")
 
-	dt = df.groupby(["Category"])["Cost"].agg([np.sum])\
+	dt = df.groupby(["category"])["cost"].agg([np.sum])\
 									.sort_values(by="sum", ascending=False)\
 									.to_dict()['sum']
 	labels = []

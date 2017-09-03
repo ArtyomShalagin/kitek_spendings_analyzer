@@ -1,4 +1,6 @@
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dataflow.DataManager;
+import dataflow.EntryBean;
 import entity.front.CatValue;
 import fts_api.data.ReceiptInfo;
 import org.slf4j.Logger;
@@ -28,13 +30,9 @@ public class Server implements AutoCloseable {
         port(4567);
 
         path("/api", () -> {
-
-            // note
-            // this is such a fucking copypasta
-            // i hope it at least works
             get("/stats", (req, res) -> {
                 String type = req.queryParams("type");
-                String name = null;
+                String username = req.queryParams("username");
                 String filename = null;
                 CatValue ret = null;
                 List<Pair<String, Integer>> result = null;
@@ -42,18 +40,25 @@ public class Server implements AutoCloseable {
                     res.status(400);
                     return "type not specified";
                 }
+                if (username == null) {
+                    res.status(400);
+                    return "username not specified";
+                }
+                String beginPeriod = req.queryParams("begin_period");
+                String endPeriod = req.queryParams("end_period");
+
+                // this is ok while all stats queries require periods
+                // but should we move it in every switch branch?
+                if (beginPeriod == null || endPeriod == null) {
+                    res.status(400);
+                    return "begin or end period not specified";
+                }
 
                 switch (type) {
                     case "general_stats":
-//                        String beginPeriod = req.queryParams("begin_period");
-//                        String endPeriod = req.queryParams("begin_period");
-                        name = req.queryParams("username");
-                        if (name == null) {
-                            res.status(400);
-                            return "missing params";
-                        }
-
-                        result = visualizerInterface.generalStats(getPath(name), 5); // five? fifty five? fuck all would i know
+                        List<EntryBean> data = ServerUtil.readAndFilterData(username, beginPeriod, endPeriod);
+                        DataManager.writeToFile("visualization/" + username + ".csv", data);
+                        result = visualizerInterface.generalStats("visualization/" + username + ".csv");
                         ret = new CatValue();
                         if (result != null) {
                             ret.result = result.parallelStream().map((p) -> new CatValue.CatValuePair(p.first, p.second)).collect(Collectors.toList());
@@ -63,13 +68,7 @@ public class Server implements AutoCloseable {
                             return "no result obtained: what have i become";
                         }
                     case "max_spendings":
-                        name = req.queryParams("username");
-                        if (name == null) {
-                            res.status(400);
-                            return "missing params";
-                        }
-
-                        result = visualizerInterface.maxSpendings(getPath(name), 5);
+                        result = visualizerInterface.maxSpendings(getPath(username), 5);
                         ret = new CatValue();
                         if (result != null) {
                             ret.result = result.parallelStream().map((p) -> new CatValue.CatValuePair(p.first, p.second)).collect(Collectors.toList());
@@ -79,22 +78,10 @@ public class Server implements AutoCloseable {
                             return "no result obtained: what have i become";
                         }
                     case "weekly_spendings":
-                        name = req.queryParams("username");
-                        if (name == null) {
-                            res.status(400);
-                            return "missing params";
-                        }
-
-                        filename = visualizerInterface.weeklySpendings(getPath(name));
+                        filename = visualizerInterface.weeklySpendings(getPath(username));
                         return "{\"filename\":\"" + filename + "\"}";
                     case "categories_spendings":
-                        name = req.queryParams("username");
-                        if (name == null) {
-                            res.status(400);
-                            return "missing params";
-                        }
-
-                        filename = visualizerInterface.categoriesSpendings(getPath(name));
+                        filename = visualizerInterface.categoriesSpendings(getPath(username));
                         return "{\"filename\":\"" + filename + "\"}";
 
                     default:
@@ -172,7 +159,6 @@ public class Server implements AutoCloseable {
         notFound(this::fourOhFourClause);
         internalServerError(this::fiveOhOhClause);
         exception(Exception.class, this::exceptionClause);
-
     }
 
     private String fourOhFourClause(Request req, Response res) {

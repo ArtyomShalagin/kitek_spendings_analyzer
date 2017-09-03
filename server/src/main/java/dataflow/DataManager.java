@@ -103,35 +103,38 @@ public class DataManager {
     }
 
     public static void appendUserData(String username, List<EntryBean> newData) throws IOException {
-
-
         synchronized (getSyncToken(username)) {
-            createFileIfAbsent(getPath(username));
-
             List<EntryBean> data = getUserDataFromFile(username);
             data.addAll(newData);
-            ICsvBeanWriter beanWriter = null;
 
-            try {
-                beanWriter = new CsvBeanWriter(new FileWriter(getPath(username)),
-                        CsvPreference.STANDARD_PREFERENCE);
+            writeToFile(getPath(username), data);
+        }
+    }
 
-                final String[] header = {"category", "name", "cost", "date", "dayOfWeek"};
-                final CellProcessor[] processors = getProcessors();
+    public static void writeToFile(String path, List<EntryBean> data) throws IOException {
+        createFileIfAbsent(path);
 
-                beanWriter.writeHeader(header);
+        ICsvBeanWriter beanWriter = null;
 
-                for (final EntryBean entry : data) {
-                    beanWriter.write(entry, header, processors);
-                }
-            } finally {
-                if (beanWriter != null) {
-                    beanWriter.close();
-                }
+        try {
+            beanWriter = new CsvBeanWriter(new FileWriter(path),
+                    CsvPreference.STANDARD_PREFERENCE);
 
-                userDataCache.remove(username); // purge cache
-                // will reload at next get (or put, but indirectly.
+            final String[] header = {"category", "name", "cost", "date", "dayOfWeek"};
+            final CellProcessor[] processors = getProcessors();
+
+            beanWriter.writeHeader(header);
+
+            for (final EntryBean entry : data) {
+                beanWriter.write(entry, header, processors);
             }
+        } finally {
+            if (beanWriter != null) {
+                beanWriter.close();
+            }
+
+            userDataCache.remove(path); // purge cache
+            // will reload at next get (or put, but indirectly.
         }
     }
 
@@ -148,6 +151,7 @@ public class DataManager {
     /**
      * Extracted file reading method
      * I'd prefer to call this directly on each add in order to guarantee fresh data
+     *
      * @param username
      * @return Data from corresponding username file (whatever that could be read at least)
      * @throws IOException when csv reader derps out
@@ -171,7 +175,6 @@ public class DataManager {
             while ((entry = beanReader.read(EntryBean.class, header, processors)) != null) {
                 data.add(entry);
             }
-
         }
 
         return data;
