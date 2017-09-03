@@ -82,6 +82,10 @@ public class ServerUtil {
         return result;
     }
 
+    public static String decodeOrNull(String data) throws UnsupportedEncodingException {
+        return data == null ? null : URLDecoder.decode(data, "UTF-8");
+    }
+
     public static List<String> parseList(String from) {
         if (from == null) {
             return null;

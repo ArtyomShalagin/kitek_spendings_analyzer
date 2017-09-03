@@ -1,7 +1,6 @@
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dataflow.DataManager;
 import dataflow.EntryBean;
-import entity.front.CatValue;
 import fts_api.data.ReceiptInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +14,7 @@ import util.Util;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -53,9 +53,8 @@ public class Server implements AutoCloseable {
 
             get("/stats", (req, res) -> {
                 String type = req.queryParams("type");
-                String username = req.queryParams("username");
+                String username = ServerUtil.decodeOrNull(req.queryParams("username"));
                 String filename;
-                CatValue ret;
                 List<Pair<String, Integer>> result;
                 if (type == null) {
                     res.status(400);
@@ -80,10 +79,7 @@ public class Server implements AutoCloseable {
                         Predicate<EntryBean> pred = ServerUtil.Predicates.dateRange(beginPeriod, endPeriod);
                         String path = filterToPath(username, pred);
                         result = visualizerInterface.generalStats(path);
-//                        ret = new CatValue();
                         if (result != null) {
-//                            ret.result = result.parallelStream().map((p) -> new CatValue.CatValuePair(p.first, p.second)).collect(Collectors.toList());
-//                            return objectMapper.writeValueAsString(ret);
                             ServerUtil.uploadFile(res, path.substring(0, path.lastIndexOf('.')) + "_plot.png");
                             return res.raw();
                         } else {
@@ -91,20 +87,14 @@ public class Server implements AutoCloseable {
                             return "no result obtained: what have i become";
                         }
                     case "max_spendings":
-//                        data = ServerUtil.readAndFilterData(username, beginPeriod, endPeriod);
                         pred = ServerUtil.Predicates.dateRange(beginPeriod, endPeriod);
                         path = filterToPath(username, pred);
                         int itemCount = Integer.parseInt(req.queryParams("amount_items"));
                         result = visualizerInterface.maxSpendings(path, itemCount);
-//                        ret = new CatValue();
                         if (result != null) {
-//                            ret.result = result.parallelStream()
-//                                    .map(p -> new CatValue.CatValuePair(p.first, p.second))
-//                                    .collect(Collectors.toList());
                             return "Максимальные траты:\n" + result.stream()
-                                    .map(pair -> pair.first + " - " + Util.categoryIndexToName(pair.second))
+                                    .map(pair -> pair.first + " - " + Util.centsToRubles(pair.second))
                                     .collect(Collectors.joining("\n"));
-//                            return objectMapper.writeValueAsString(ret);
                         } else {
                             res.status(400);
                             return "no result obtained: what have i become";
@@ -168,8 +158,9 @@ public class Server implements AutoCloseable {
                     res.status(400);
                     return "no username param";
                 }
-                String dataString = params.get("data");
+                String dataString = ServerUtil.decodeOrNull(params.get("data"));
                 String[] data = dataString == null ? null : dataString.split("\n");
+                logger.info("add_data request, dataString = " + dataString + ", data = " + Arrays.toString(data));
                 String currDate = Util.getCurrentDateString();
                 String currDayOfWeek = Util.dateToDayOfWeek(currDate);
 
@@ -208,9 +199,9 @@ public class Server implements AutoCloseable {
                         try {
                             for (String entry : data) {
                                 String[] splitted = entry.split(":");
-                                String name = splitted[0];
-                                String price = splitted[1];
-                                String category = splitted[2];
+                                String name = splitted[0].trim();
+                                String price = Util.rublesToCents(splitted[1].trim());
+                                String category = splitted[2].trim();
                                 beans.add(new EntryBean(category, name, price, currDate, currDayOfWeek));
                             }
                         } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
@@ -231,8 +222,8 @@ public class Server implements AutoCloseable {
                         try {
                             for (String entry : data) {
                                 String[] splitted = entry.split(":");
-                                String category = splitted[0];
-                                String price = splitted[1];
+                                String category = splitted[0].trim();
+                                String price = Util.rublesToCents(splitted[1].trim());
                                 beans.add(new EntryBean(category, "_noname", price, currDate, currDayOfWeek));
                             }
                         } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {

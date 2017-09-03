@@ -13,7 +13,7 @@ public class Main {
 //        DataManager.appendUserData("username", data);
 
         Server server = new Server();
-
+//        System.out.println(Arrays.toString("lala:lala".split("\n")));
 //        System.out.println(Util.getCurrentDateString());
     }
 }

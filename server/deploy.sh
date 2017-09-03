@@ -15,15 +15,10 @@ echo 'Copied libs and jars'
 
 cp start_server.sh $deploy_dir
 cp -r ../ml/ $deploy_dir
-cp -r ../visualization $deploy_dir
-echo 'Copied ml and visual scripts'
-
-# remove this later
-cp -r user_data $deploy_dir
+echo 'Copied ml scripts'
 
 cp fts.properties $deploy_dir/
 echo "Don't forget to add fts api password in $deploy_dir/fts.properties"
-cp categories.properties $deploy_dir/
 
 touch $deploy_dir/py_interface.properties
 echo "ml_scripts_dir=ml/" >> $deploy_dir/py_interface.properties

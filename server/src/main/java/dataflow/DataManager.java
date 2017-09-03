@@ -15,7 +15,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.ref.WeakReference;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +39,7 @@ public class DataManager {
         slightly outdated cache, but not an invalid one (do check pls i might be wrong)
     -- M.
     */
-    private static ConcurrentHashMap<String, WeakReference<List<EntryBean>>> userDataCache = new ConcurrentHashMap<>();
+//    private static ConcurrentHashMap<String, WeakReference<List<EntryBean>>> userDataCache = new ConcurrentHashMap<>();
 
     private DataManager() { }
 
@@ -87,22 +86,22 @@ public class DataManager {
 
     public static List<EntryBean> getUserData(String username) throws IOException {
         // attempt cache retrieval
-        WeakReference<List<EntryBean>> tryCacheHandle = userDataCache.get(username);
-        if (tryCacheHandle != null) { // but .?
-            List<EntryBean> tryCache = tryCacheHandle.get();
-
-            if (tryCache != null) { // but .?
-                return tryCache;
-            }
-        }
+//        WeakReference<List<EntryBean>> tryCacheHandle = userDataCache.get(username);
+//        if (tryCacheHandle != null) { // but .?
+//            List<EntryBean> tryCache = tryCacheHandle.get();
+//
+//            if (tryCache != null) { // but .?
+//                return tryCache;
+//            }
+//        }
 
         // cache failed, fetch directly.
         List<EntryBean> data;
         synchronized (getSyncToken(username)) {
             data = getUserDataFromFile(username);
 
-            if (data != null)
-                userDataCache.put(username, new WeakReference<>(data)); // update cache
+//            if (data != null)
+//                userDataCache.put(username, new WeakReference<>(data)); // update cache
         }
 
         return data;
@@ -139,7 +138,7 @@ public class DataManager {
                 beanWriter.close();
             }
 
-            userDataCache.remove(path); // purge cache
+//            userDataCache.remove(path); // purge cache
             // will reload at next get (or put, but indirectly.
         }
     }

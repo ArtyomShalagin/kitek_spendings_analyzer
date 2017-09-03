@@ -80,4 +80,20 @@ public class Util {
     public static String categoryIndexToName(int index) {
         return catIndexToName.getOrDefault(index, "undefined category");
     }
+
+    public static String centsToRubles(int value) {
+        String result = String.valueOf(value / 100);
+        if (value % 100 != 0) {
+            result += "." + value % 100;
+        }
+        return result;
+    }
+
+    public static String rublesToCents(String value) {
+        if (value.contains(".")) {
+            return (value + "00").substring(0, value.indexOf(".") + 3).replaceAll("\\.", "");
+        } else {
+            return value + "00";
+        }
+    }
 }
