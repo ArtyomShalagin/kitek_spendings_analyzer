@@ -1,11 +1,10 @@
-package server;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import entity.front.CatValue;
 import fts_api.data.ReceiptInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import py_interface.PyVisualizerInterface;
+import server.ServerUtil;
 import spark.Request;
 import spark.Response;
 import util.Pair;
