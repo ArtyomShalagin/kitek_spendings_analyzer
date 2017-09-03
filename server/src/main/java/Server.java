@@ -119,7 +119,8 @@ public class Server implements AutoCloseable {
                         path = filterToPath(username, pred);
 
                         filename = visualizerInterface.weeklySpendings(path);
-                        return "{\"filename\":\"" + filename + "\"}";
+                        ServerUtil.uploadFile(res, filename);
+                        return "";
                     case "categories_spending":
                         pred = ServerUtil.Predicates.dateRange(beginPeriod, endPeriod);
 
@@ -133,7 +134,8 @@ public class Server implements AutoCloseable {
                         path = filterToPath(username, pred);
 
                         filename = visualizerInterface.categoriesSpendings(path);
-                        return "{\"filename\":\"" + filename + "\"}";
+                        ServerUtil.uploadFile(res, filename);
+                        return "";
 
                     default:
                         res.status(400);
