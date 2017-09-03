@@ -30,15 +30,15 @@ public class PyVisualizerInterface extends PyInterface {
             return null;
         }
         try {
-            Object result = jep.invoke("max_spendings", filename, amountOfItems);
+            Object result = jep.invoke("max_spending", filename, amountOfItems);
             if (!(result instanceof HashMap)) {
                 System.err.println("Error in python interface: unexpected return value in method max_spending");
                 return null;
             }
             //noinspection unchecked,ConstantConditions
-            HashMap<String, Integer> map = (HashMap<String, Integer>) result;
+            HashMap<String, String> map = (HashMap<String, String>) result;
             return map.keySet().stream()
-                    .map(key -> new Pair<>(key, map.get(key)))
+                    .map(key -> new Pair<>(key, Integer.parseInt(map.get(key))))
                     .sorted(Comparator.comparingInt(p -> p.second))
                     .collect(Collectors.toList());
         } catch (JepException e) {
@@ -60,7 +60,7 @@ public class PyVisualizerInterface extends PyInterface {
         }
         try {
             jep.invoke("days_of_week_spending", filename);
-            return filename + "_plot.png";
+            return filename.substring(0, filename.lastIndexOf('.')) + "_plot.png";
         } catch (JepException e) {
             System.err.println("Error in python interface: " + e.getMessage());
             return null;
@@ -80,7 +80,7 @@ public class PyVisualizerInterface extends PyInterface {
         }
         try {
             jep.invoke("categories_spending", filename);
-            return filename + "_plot.png";
+            return filename.substring(0, filename.lastIndexOf('.')) + "_plot.png";
         } catch (JepException e) {
             System.err.println("Error in python interface: " + e.getMessage());
             return null;

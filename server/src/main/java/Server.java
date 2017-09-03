@@ -10,6 +10,7 @@ import server.ServerUtil;
 import spark.Request;
 import spark.Response;
 import util.Pair;
+import util.Util;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -104,7 +105,9 @@ public class Server implements AutoCloseable {
                     case "days_of_week_spending":
                         pred = ServerUtil.Predicates.dateRange(beginPeriod, endPeriod);
                         String daysRaw = req.queryParams("days_of_week");
-                        List<String> days = ServerUtil.parseList(daysRaw);
+                        List<String> days = ServerUtil.parseList(daysRaw).stream()
+                                .map(day -> Util.dayOfWeekName(Integer.parseInt(day))) // todo unsafe parsing
+                                .collect(Collectors.toList());
                         String catsRaw = req.queryParams("categories");
                         List<String> cats = ServerUtil.parseList(catsRaw);
 
@@ -120,7 +123,7 @@ public class Server implements AutoCloseable {
 
                         filename = visualizerInterface.weeklySpendings(path);
                         ServerUtil.uploadFile(res, filename);
-                        return "";
+                        return res.raw();
                     case "categories_spending":
                         pred = ServerUtil.Predicates.dateRange(beginPeriod, endPeriod);
 
@@ -135,7 +138,7 @@ public class Server implements AutoCloseable {
 
                         filename = visualizerInterface.categoriesSpendings(path);
                         ServerUtil.uploadFile(res, filename);
-                        return "";
+                        return res.raw();
 
                     default:
                         res.status(400);
@@ -164,6 +167,7 @@ public class Server implements AutoCloseable {
                             return "err";
                         }
                         ReceiptInfo receipt = ServerUtil.handleNewReceipt(username, fn, fd, fpd);
+                        logger.info("database updated successfully for user " + username);
                         res.status(200);
                         return objectMapper.writeValueAsString(receipt);
                     default:
@@ -245,8 +249,8 @@ public class Server implements AutoCloseable {
         logger.info(" -- Exception -- ");
         logRequestInfo(req);
         logger.info("   ");
-        logger.trace("With trace: ", e);
-        logger.trace("   ");
+        logger.info("With trace: ", e);
+        logger.info("   ");
 
 
         res.status(505);

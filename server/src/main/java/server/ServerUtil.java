@@ -16,8 +16,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.Date;
-import java.util.*;
-import java.util.function.BinaryOperator;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -80,17 +82,13 @@ public class ServerUtil {
         return result;
     }
 
-    // :3
-    // [mon,tue,wed,thu] or smth
     public static List<String> parseList(String from) {
-        if (from == null)
+        if (from == null) {
             return null;
-
+        }
         try {
             from = URLDecoder.decode(from, "UTF-8");
-            int start = from.indexOf('[');
-            int end = from.indexOf(']');
-            String[] list = from.substring(start + 1, end).split(",");
+            String[] list = from.split("\\.");
             return Arrays.asList(list);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
