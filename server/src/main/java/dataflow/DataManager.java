@@ -1,5 +1,7 @@
 package dataflow;
 
+import fts_api.data.ReceiptEntryInfo;
+import fts_api.data.ReceiptInfo;
 import org.supercsv.cellprocessor.constraint.NotNull;
 import org.supercsv.cellprocessor.ift.CellProcessor;
 import org.supercsv.io.CsvBeanReader;
@@ -7,11 +9,13 @@ import org.supercsv.io.CsvBeanWriter;
 import org.supercsv.io.ICsvBeanReader;
 import org.supercsv.io.ICsvBeanWriter;
 import org.supercsv.prefs.CsvPreference;
+import util.Util;
 
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +28,17 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DataManager {
     private static final String DATA_DIR = "user_data/";
     private static ConcurrentHashMap<String, Object> syncTokens = new ConcurrentHashMap<>();
+
+    /*
+    impl note
+    this may get slightly outdated, but on the other hand we'll be saving time heavily.
+    each append invalidates cache for the selected user
+    each get may be satisfied from cache
+    any modifications except value loss (gc) are made in synchronized fashion, per-user blocking, ensuring we get an at worst
+        slightly outdated cache, but not an invalid one (do check pls i might be wrong)
+    -- M.
+    */
+    private static ConcurrentHashMap<String, WeakReference<List<EntryBean>>> userDataCache = new ConcurrentHashMap<>();
 
     private DataManager() { }
 
@@ -65,57 +80,102 @@ public class DataManager {
     }
 
     public static List<EntryBean> getUserData(String username) throws IOException {
-        List<EntryBean> data = new ArrayList<>();
-        synchronized (getSyncToken(username)) {
-            ICsvBeanReader beanReader = null;
-            try {
-                if (!Paths.get(getPath(username)).toFile().exists()) {
-                    return new ArrayList<>();
-                }
-                beanReader = new CsvBeanReader(new FileReader(getPath(username)), CsvPreference.STANDARD_PREFERENCE);
+        // attempt cache retrieval
+        WeakReference<List<EntryBean>> tryCacheHandle = userDataCache.get(username);
+        if (tryCacheHandle != null) { // but .?
+            List<EntryBean> tryCache = tryCacheHandle.get();
 
-                // the header elements are used to map the values to the bean (names must match)
-                final String[] header = beanReader.getHeader(true);
+            if (tryCache != null) { // but .?
+                return tryCache;
+            }
+        }
+
+        // cache failed, fetch directly.
+        List<EntryBean> data;
+        synchronized (getSyncToken(username)) {
+            data = getUserDataFromFile(username);
+
+            if (data != null)
+                userDataCache.put(username, new WeakReference<>(data)); // update cache
+        }
+
+        return data;
+    }
+
+
+
+    public static void appendUserData(String username, List<EntryBean> newData) throws IOException {
+
+
+        synchronized (getSyncToken(username)) {
+            createFileIfAbsent(getPath(username));
+
+            List<EntryBean> data = getUserDataFromFile(username);
+            data.addAll(newData);
+            ICsvBeanWriter beanWriter = null;
+
+            try {
+                beanWriter = new CsvBeanWriter(new FileWriter(getPath(username)),
+                        CsvPreference.STANDARD_PREFERENCE);
+
+                final String[] header = {"category", "name", "cost", "date", "dayOfWeek"};
                 final CellProcessor[] processors = getProcessors();
 
-                if (header == null) { // file is empty
-                    return new ArrayList<>();
-                }
+                beanWriter.writeHeader(header);
 
-                EntryBean entry;
-                while ((entry = beanReader.read(EntryBean.class, header, processors)) != null) {
-                    data.add(entry);
+                for (final EntryBean entry : data) {
+                    beanWriter.write(entry, header, processors);
                 }
             } finally {
-                if (beanReader != null) {
-                    beanReader.close();
+                if (beanWriter != null) {
+                    beanWriter.close();
                 }
+
+                userDataCache.remove(username); // purge cache
+                // will reload at next get (or put, but indirectly.
             }
+        }
+    }
+
+    public static List<EntryBean> receiptToBeans(ReceiptInfo receipt) {
+        List<EntryBean> data = new ArrayList<>();
+        for (ReceiptEntryInfo entryInfo : receipt.items) {
+            EntryBean entry = new EntryBean(String.valueOf(entryInfo.category), entryInfo.name,
+                    String.valueOf(entryInfo.price), receipt.date, Util.dateToDayOfWeek(receipt.date));
+            data.add(entry);
         }
         return data;
     }
 
-    public static void appendUserData(String username, List<EntryBean> newData) throws IOException {
-        createFileIfAbsent(getPath(username));
-        List<EntryBean> data = getUserData(username);
-        data.addAll(newData);
-        ICsvBeanWriter beanWriter = null;
-        try {
-            beanWriter = new CsvBeanWriter(new FileWriter(getPath(username)),
-                    CsvPreference.STANDARD_PREFERENCE);
+    /**
+     * Extracted file reading method
+     * I'd prefer to call this directly on each add in order to guarantee fresh data
+     * @param username
+     * @return Data from corresponding username file (whatever that could be read at least)
+     * @throws IOException when csv reader derps out
+     */
+    private static List<EntryBean> getUserDataFromFile(String username) throws IOException {
+        List<EntryBean> data = new ArrayList<>();
+        if (!Paths.get(getPath(username)).toFile().exists()) {
+            return new ArrayList<>();
+        }
 
-            final String[] header = { "category", "name", "cost", "date", "dayOfWeek" };
+        try (ICsvBeanReader beanReader = new CsvBeanReader(new FileReader(getPath(username)), CsvPreference.STANDARD_PREFERENCE)) {
+            // the header elements are used to map the values to the bean (names must match)
+            final String[] header = beanReader.getHeader(true);
             final CellProcessor[] processors = getProcessors();
 
-            beanWriter.writeHeader(header);
+            if (header == null) { // file is empty
+                return new ArrayList<>();
+            }
 
-            for (final EntryBean entry : data) {
-                beanWriter.write(entry, header, processors);
+            EntryBean entry;
+            while ((entry = beanReader.read(EntryBean.class, header, processors)) != null) {
+                data.add(entry);
             }
-        } finally {
-            if (beanWriter != null) {
-                beanWriter.close();
-            }
+
         }
+
+        return data;
     }
 }

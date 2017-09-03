@@ -3,7 +3,12 @@ package py_interface;
 import jep.JepException;
 import util.Pair;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 
 public class PyMlInterface extends PyInterface {
@@ -56,13 +61,40 @@ public class PyMlInterface extends PyInterface {
             Object result = jep.getValue(String.format("predict_categories('svm', %s)", pyProducts.name));
             if (result instanceof List) {
                 //noinspection unchecked
-                return (List<Integer>) result;
+                List<Long> list = (List<Long>) result;
+                return list.stream()
+                        .map(l -> (int) ((long) l))
+                        .collect(Collectors.toList());
             } else {
                 System.err.println("Ml interface returned unexpected value");
                 return null;
             }
         } catch (JepException e) {
             System.err.println("Error in python interface: " + e.getMessage());
+            return null;
+        }
+    }
+
+    // for those unable to set the damn jep locally, you can use a crunch like that
+    public List<Integer> getCategoriesStupid(List<String> products) {
+        try {
+            String scriptsDir = PyInterfaceProperties.getInstance().getProperty(SCRIPTS_DIR_KEY);
+            File f = new File(scriptsDir + "crunch_input");
+            PrintWriter out = new PrintWriter(f);
+            products.forEach(out::println);
+            out.close();
+
+            Process process = Runtime.getRuntime().exec("python " + scriptsDir + "crunch_interface.py");
+            process.waitFor();
+
+            Scanner in = new Scanner(new File(scriptsDir + "crunch_output"));
+            List<Integer> result = new ArrayList<>();
+            while (in.hasNextLine()) {
+                result.add(Integer.parseInt(in.nextLine()));
+            }
+            return result;
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
             return null;
         }
     }

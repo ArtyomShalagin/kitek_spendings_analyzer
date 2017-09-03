@@ -1,5 +1,6 @@
 package fts_api;
 
+import fts_api.data.FTSResult;
 import util.IOUtil;
 
 import java.io.IOException;
@@ -26,13 +27,23 @@ public class FTSApi {
         }};
     }
 
-    private static String buildUrl(String fss, String tickets, String fiscalSign) {
+    private static String buildUrl(String fiscalStorage, String documentNumber, String fiscalProperty) {
         String urlTemplate = FTSProperties.getInstance().getProperty(URL_TEMPLATE_KEY);
-        return String.format(urlTemplate, fss, tickets, fiscalSign);
+        return String.format(urlTemplate, fiscalStorage, documentNumber, fiscalProperty);
     }
 
-    public static FTSResult requestReceiptInfo(String fss, String tickets, String fiscalSign) throws IOException {
-        String urlString = buildUrl(fss, tickets, fiscalSign);
+    /**
+     * On actual receipts the parameters are fn, fd and fpd respectively
+     *
+     * @param fiscalStorage
+     * @param documentNumber
+     * @param fiscalProperty
+     * @return
+     * @throws IOException
+     */
+    public static FTSResult requestReceiptInfo(String fiscalStorage, String documentNumber, String fiscalProperty)
+            throws IOException {
+        String urlString = buildUrl(fiscalStorage, documentNumber, fiscalProperty);
         URL url = new URL(urlString);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
@@ -47,28 +58,6 @@ public class FTSApi {
         return new FTSResult(responseCode, data);
     }
 
-    public static class FTSResult {
-        private final int responseCode;
-        private final String data;
 
-        private final int VALID_RESPONSE_CODE = 200;
-
-        FTSResult(int responseCode, String data) {
-            this.responseCode = responseCode;
-            this.data = data;
-        }
-
-        public int getResponseCode() {
-            return responseCode;
-        }
-
-        public String getData() {
-            return data;
-        }
-
-        public boolean isValid() {
-            return responseCode == VALID_RESPONSE_CODE;
-        }
-    }
-
+    // moved ftsresult to data
 }
