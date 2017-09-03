@@ -3,7 +3,7 @@ package fts_api;
 import fts_api.data.FTSResult;
 import util.IOUtil;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
@@ -57,7 +57,4 @@ public class FTSApi {
 
         return new FTSResult(responseCode, data);
     }
-
-
-    // moved ftsresult to data
 }

@@ -6,8 +6,13 @@ import fts_api.FTSApi;
 import fts_api.data.FTSResult;
 import fts_api.data.ReceiptInfo;
 import py_interface.PyMlInterface;
+import spark.Response;
 
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -70,5 +75,17 @@ public class ServerUtil {
                     result.put(parts[0], parts[1]);
                 });
         return result;
+    }
+
+    public static void uploadFile(Response response, String filename) throws IOException {
+        Path path = Paths.get(filename);
+        byte[] data = Files.readAllBytes(path);
+
+        HttpServletResponse raw = response.raw();
+//        response.header("Content-Disposition", "attachment; filename=image.png");
+//        response.type("application/force-download");
+        raw.getOutputStream().write(data);
+        raw.getOutputStream().flush();
+        raw.getOutputStream().close();
     }
 }

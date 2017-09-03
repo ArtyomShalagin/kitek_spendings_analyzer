@@ -102,8 +102,6 @@ public class DataManager {
         return data;
     }
 
-
-
     public static void appendUserData(String username, List<EntryBean> newData) throws IOException {
 
 
@@ -176,16 +174,6 @@ public class DataManager {
 
         }
 
-        return data;
-    }
-
-    public static List<EntryBean> receiptToBeans(ReceiptInfo receipt) {
-        List<EntryBean> data = new ArrayList<>();
-        for (ReceiptEntryInfo entryInfo : receipt.items) {
-            EntryBean entry = new EntryBean(String.valueOf(entryInfo.category), entryInfo.name,
-                    String.valueOf(entryInfo.price), receipt.date, Util.dateToDayOfWeek(receipt.date));
-            data.add(entry);
-        }
         return data;
     }
 }
