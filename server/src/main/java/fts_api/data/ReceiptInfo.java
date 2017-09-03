@@ -13,6 +13,22 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ReceiptInfo {
+    /*
+    impl note
+    jackson politely asks to keep these
+    they're supposedly threadsafe, mapper is very heavy and is an afterburner cache as well
+    it'd seem that you're not using it (data-binding) though, but w/e
+
+    todo: keep object mapper from server
+    todo todo: get a depinject framework.
+     */
+    private static JsonFactory factory = new JsonFactory();
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    static {
+        factory.setCodec(objectMapper);
+    }
+
     public final int sum;
     public final String date;
     public final String time;
@@ -33,8 +49,6 @@ public class ReceiptInfo {
 
     public static ReceiptInfo parseReceiptInfo(String data) {
         try {
-            JsonFactory factory = new JsonFactory();
-            factory.setCodec(new ObjectMapper());
             JsonParser parser = factory.createParser(data);
 
             TreeNode root = parser.readValueAsTree();

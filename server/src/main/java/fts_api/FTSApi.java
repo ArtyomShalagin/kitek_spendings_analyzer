@@ -1,5 +1,6 @@
 package fts_api;
 
+import fts_api.data.FTSResult;
 import util.IOUtil;
 
 import java.io.IOException;
@@ -57,28 +58,6 @@ public class FTSApi {
         return new FTSResult(responseCode, data);
     }
 
-    public static class FTSResult {
-        private final int responseCode;
-        private final String data;
 
-        private final int VALID_RESPONSE_CODE = 200;
-
-        FTSResult(int responseCode, String data) {
-            this.responseCode = responseCode;
-            this.data = data;
-        }
-
-        public int getResponseCode() {
-            return responseCode;
-        }
-
-        public String getData() {
-            return data;
-        }
-
-        public boolean isValid() {
-            return responseCode == VALID_RESPONSE_CODE;
-        }
-    }
-
+    // moved ftsresult to data
 }
